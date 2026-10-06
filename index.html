@@ -224,7 +224,8 @@ const tg = window.Telegram.WebApp;
 tg.expand();
 tg.ready();
 
-// Каналы (stream обновляется через бота)
+// API прокси на нашем VPS
+const API = "http://193.124.91.106:5050";
 const CHANNELS = [
   { id: 112, name: "TVT 1",            icon: "📡", desc: "Главный государственный канал" },
   { id: 106, name: "Jahonnamo",         icon: "🌍", desc: "Информационный. Новости" },
@@ -263,36 +264,25 @@ function renderChannels() {
 
 // Воспроизведение канала
 async function playChannel(id, name) {
-  // Убираем выделение предыдущего
   if (currentId) {
     document.getElementById(`card-${currentId}`)?.classList.remove('playing');
   }
   currentId = id;
   document.getElementById(`card-${id}`)?.classList.add('playing');
-
-  // Показываем плеер и загрузку
   document.getElementById('player-section').classList.add('active');
   document.getElementById('player-name').textContent = name;
   document.getElementById('loading').classList.add('show');
   document.getElementById('error-msg').classList.remove('show');
-
-  // Прокручиваем к плееру
   document.getElementById('player-section').scrollIntoView({ behavior: 'smooth' });
 
   try {
-    // Получаем стрим через бота (передаём id в данных)
-    const resp = await fetch(`https://khudoydod.github.io/tajik-tv/streams/${id}.json`);
-    if (!resp.ok) throw new Error('No stream');
+    const resp = await fetch(`${API}/stream/${id}`);
     const data = await resp.json();
-    const streamUrl = data.stream;
-
-    startPlayer(streamUrl);
+    if (!data.ok) throw new Error(data.error);
+    startPlayer(data.stream);
   } catch(e) {
-    // Если нет кэша — отправляем запрос боту
-    tg.sendData(JSON.stringify({ action: 'get_stream', ch_id: id, ch_name: name }));
     document.getElementById('loading').classList.remove('show');
-    document.getElementById('error-msg').classList.remove('show');
-    document.getElementById('error-msg').textContent = `⏳ Запрашиваю ссылку для "${name}" у бота...`;
+    document.getElementById('error-msg').textContent = `❌ Не удалось загрузить "${name}". Попробуйте другой канал.`;
     document.getElementById('error-msg').classList.add('show');
   }
 }
