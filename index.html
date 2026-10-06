@@ -7,203 +7,267 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#07070d;
+  --card:#10101a;
+  --card-hover:#18182a;
+  --red:#e53935;
+  --red2:#ff5252;
+  --text:#fff;
+  --muted:rgba(255,255,255,.45);
+  --border:rgba(255,255,255,.07);
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow-x:hidden}
 
-:root {
-  --bg: #0a0a0f;
-  --card: #13131a;
-  --card2: #1a1a24;
-  --accent: #e53935;
-  --accent2: #ff5252;
-  --text: #ffffff;
-  --sub: rgba(255,255,255,0.5);
-  --border: rgba(255,255,255,0.07);
+/* ══ FULLSCREEN PLAYER ══ */
+#fs-overlay{
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:#000;
+  flex-direction:column;
 }
+#fs-overlay.show{display:flex}
+#fs-video{width:100%;height:100%;object-fit:contain;background:#000}
+#fs-close{
+  position:absolute;top:16px;right:16px;
+  width:44px;height:44px;
+  background:rgba(0,0,0,.6);
+  border:none;border-radius:50%;
+  color:#fff;font-size:20px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  z-index:10;
+  backdrop-filter:blur(10px);
+  transition:background .2s;
+}
+#fs-close:hover{background:rgba(229,57,53,.8)}
+#fs-info{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:20px 20px 24px;
+  background:linear-gradient(transparent,rgba(0,0,0,.85));
+  display:flex;align-items:center;justify-content:space-between;
+  transition:opacity .3s;
+}
+#fs-info.hidden{opacity:0}
+#fs-ch-name{font-size:18px;font-weight:700}
+.fs-live{
+  background:var(--red);color:#fff;
+  font-size:11px;font-weight:700;
+  padding:4px 10px;border-radius:4px;
+  letter-spacing:.5px;
+}
+.fs-live::before{content:'● '}
 
-html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow-x: hidden; }
+/* ══ HEADER ══ */
+.hdr{
+  background:linear-gradient(135deg,#c62828,#b71c1c);
+  padding:14px 16px;
+  display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 20px rgba(198,40,40,.4);
+}
+.hdr-icon{
+  width:40px;height:40px;
+  background:rgba(255,255,255,.15);
+  border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;flex-shrink:0;
+}
+.hdr-title{font-size:17px;font-weight:700}
+.hdr-sub{font-size:11px;opacity:.75;margin-top:1px}
+.hdr-live{
+  margin-left:auto;
+  display:flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:600;
+  background:rgba(255,255,255,.15);
+  padding:5px 10px;border-radius:20px;white-space:nowrap;
+}
+.hdr-live::before{
+  content:'';width:7px;height:7px;
+  background:#69f0ae;border-radius:50%;
+  animation:blink 1.2s infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* HEADER */
-.header {
-  position: sticky; top: 0; z-index: 50;
-  background: linear-gradient(135deg, #c62828, #b71c1c);
-  padding: 14px 16px;
-  display: flex; align-items: center; gap: 12px;
-  box-shadow: 0 2px 20px rgba(198,40,40,0.4);
-}
-.header-icon {
-  width: 40px; height: 40px;
-  background: rgba(255,255,255,0.15);
-  border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 22px;
-}
-.header-title { font-size: 17px; font-weight: 700; }
-.header-sub { font-size: 12px; opacity: 0.75; margin-top: 1px; }
-.live-dot {
-  margin-left: auto;
-  display: flex; align-items: center; gap: 6px;
-  font-size: 11px; font-weight: 600;
-  background: rgba(255,255,255,0.15);
-  padding: 5px 10px; border-radius: 20px;
-}
-.live-dot::before {
-  content: '';
-  width: 7px; height: 7px;
-  background: #69f0ae;
-  border-radius: 50%;
-  animation: blink 1.2s infinite;
-}
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+/* ══ INLINE PLAYER ══ */
+#player-section{display:none;background:#000;position:relative}
+#player-section.show{display:block}
+#video{width:100%;aspect-ratio:16/9;background:#000;display:block;cursor:pointer}
 
-/* PLAYER */
-#player-wrap {
-  display: none;
-  background: #000;
-  position: relative;
+.player-bar{
+  background:linear-gradient(135deg,#180505,#100000);
+  padding:10px 14px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid rgba(229,57,53,.15);
 }
-#player-wrap.show { display: block; }
-#video { width: 100%; aspect-ratio: 16/9; background: #000; display: block; }
-
-.player-bar {
-  background: linear-gradient(135deg, #1a0505, #120000);
-  padding: 10px 14px;
-  display: flex; align-items: center; justify-content: space-between;
-  border-bottom: 1px solid rgba(229,57,53,0.2);
+.player-name{font-size:15px;font-weight:600}
+.player-actions{display:flex;align-items:center;gap:8px}
+.badge-live{
+  background:var(--red);color:#fff;
+  font-size:10px;font-weight:700;
+  padding:3px 8px;border-radius:4px;
 }
-.player-ch { font-size: 15px; font-weight: 600; }
-.player-right { display: flex; align-items: center; gap: 8px; }
-.badge-live {
-  background: var(--accent);
-  color: #fff;
-  font-size: 10px; font-weight: 700;
-  padding: 3px 8px; border-radius: 4px;
-  letter-spacing: 0.5px;
+.badge-live::before{content:'● ';animation:blink 1.2s infinite}
+.btn-fs{
+  background:rgba(255,255,255,.1);
+  border:none;color:#fff;
+  font-size:13px;padding:5px 10px;
+  border-radius:8px;cursor:pointer;
+  transition:background .2s;
 }
-.btn-close {
-  background: rgba(255,255,255,0.1);
-  border: none; color: #fff;
-  font-size: 12px; padding: 5px 10px;
-  border-radius: 8px; cursor: pointer;
-}
-
-/* LOADER */
-.loader-wrap {
-  display: none;
-  position: absolute; inset: 0;
-  background: rgba(0,0,0,0.85);
-  align-items: center; justify-content: center;
-  flex-direction: column; gap: 14px;
-}
-.loader-wrap.show { display: flex; }
-.spin {
-  width: 36px; height: 36px;
-  border: 3px solid rgba(255,255,255,0.15);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ERROR */
-.err-box {
-  display: none;
-  margin: 12px;
-  background: rgba(229,57,53,0.1);
-  border: 1px solid rgba(229,57,53,0.3);
-  border-radius: 12px;
-  padding: 12px 14px;
-  font-size: 13px; color: #ff8a80;
-  text-align: center;
-}
-.err-box.show { display: block; }
-
-/* CHANNELS */
-.section { padding: 14px 12px; }
-.section-label {
-  font-size: 11px; font-weight: 700;
-  color: var(--sub);
-  text-transform: uppercase; letter-spacing: 1.5px;
-  margin-bottom: 12px;
-}
-.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 14px 12px;
-  cursor: pointer;
-  transition: transform 0.15s, border-color 0.15s;
-  user-select: none;
-  position: relative;
-  overflow: hidden;
-}
-.card:active { transform: scale(0.96); }
-.card.active {
-  border-color: var(--accent);
-  background: linear-gradient(135deg, #1a0505, #130000);
-}
-.card.active::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--accent), var(--accent2));
-}
-.card-icon { font-size: 28px; margin-bottom: 8px; }
-.card-name { font-size: 13px; font-weight: 600; line-height: 1.3; margin-bottom: 4px; }
-.card-desc { font-size: 11px; color: var(--sub); line-height: 1.4; margin-bottom: 8px; }
-.card-btn {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 11px; font-weight: 700;
-  color: var(--accent2);
+.btn-fs:hover{background:rgba(255,255,255,.2)}
+.btn-close-player{
+  background:rgba(229,57,53,.2);
+  border:none;color:var(--red2);
+  font-size:13px;padding:5px 10px;
+  border-radius:8px;cursor:pointer;
 }
 
-/* FOOTER */
-.footer {
-  padding: 16px;
-  text-align: center;
-  font-size: 11px;
-  color: rgba(255,255,255,0.25);
-  border-top: 1px solid var(--border);
+/* ══ LOADER ══ */
+.loader{
+  display:none;position:absolute;inset:0;
+  background:rgba(0,0,0,.8);
+  align-items:center;justify-content:center;
+  flex-direction:column;gap:14px;z-index:5;
+}
+.loader.show{display:flex}
+.spin{
+  width:40px;height:40px;
+  border:3px solid rgba(255,255,255,.15);
+  border-top-color:var(--red);
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ══ ERROR ══ */
+.err{
+  display:none;
+  margin:12px;
+  background:rgba(229,57,53,.1);
+  border:1px solid rgba(229,57,53,.3);
+  border-radius:12px;
+  padding:12px 14px;
+  font-size:13px;color:#ff8a80;
+  text-align:center;
+}
+.err.show{display:block}
+
+/* ══ CHANNELS ══ */
+.section{padding:14px 12px 0}
+.section-label{
+  font-size:11px;font-weight:700;
+  color:var(--muted);
+  text-transform:uppercase;letter-spacing:1.5px;
+  margin-bottom:12px;
+}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-bottom:80px}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:16px 14px;
+  cursor:pointer;
+  transition:transform .15s,border-color .2s,background .2s;
+  user-select:none;
+  position:relative;overflow:hidden;
+}
+.card:active{transform:scale(.96)}
+.card:hover{background:var(--card-hover)}
+.card.active{
+  border-color:var(--red);
+  background:linear-gradient(135deg,#1a0505,#120000);
+}
+.card.active::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;
+  height:2px;
+  background:linear-gradient(90deg,var(--red),var(--red2));
+}
+.card-icon{font-size:30px;margin-bottom:10px}
+.card-name{font-size:13px;font-weight:700;line-height:1.3;margin-bottom:4px}
+.card-desc{font-size:11px;color:var(--muted);line-height:1.4;margin-bottom:10px}
+.card-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:700;color:var(--red2);
+}
+.card.active .card-btn{color:#ff8a80}
+
+/* ══ BOTTOM NAV ══ */
+.bottom-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(7,7,13,.95);
+  backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);
+  padding:10px 16px 14px;
+  display:flex;align-items:center;justify-content:space-between;
+  z-index:50;
+}
+.bot-link{font-size:12px;color:var(--muted)}
+.btn-m3u{
+  background:linear-gradient(135deg,var(--red),#c62828);
+  border:none;color:#fff;
+  font-size:12px;font-weight:600;
+  padding:8px 14px;border-radius:10px;
+  cursor:pointer;
 }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="header-icon">📺</div>
-  <div>
-    <div class="header-title">Таджикское ТВ</div>
-    <div class="header-sub">17 каналов</div>
+<!-- ══ FULLSCREEN OVERLAY ══ -->
+<div id="fs-overlay">
+  <video id="fs-video" controls autoplay playsinline></video>
+  <button id="fs-close" onclick="closeFs()">✕</button>
+  <div id="fs-info">
+    <div id="fs-ch-name">—</div>
+    <span class="fs-live">LIVE</span>
   </div>
-  <div class="live-dot">LIVE</div>
 </div>
 
-<div id="player-wrap">
+<!-- ══ HEADER ══ -->
+<div class="hdr">
+  <div class="hdr-icon">📺</div>
+  <div>
+    <div class="hdr-title">Таджикское ТВ</div>
+    <div class="hdr-sub">17 каналов онлайн</div>
+  </div>
+  <div class="hdr-live">LIVE</div>
+</div>
+
+<!-- ══ INLINE PLAYER ══ -->
+<div id="player-section">
   <div style="position:relative">
-    <video id="video" controls autoplay playsinline></video>
-    <div class="loader-wrap" id="loader">
+    <video id="video" controls autoplay playsinline onclick="openFs()"></video>
+    <div class="loader" id="loader">
       <div class="spin"></div>
-      <span style="font-size:13px;color:rgba(255,255,255,0.6)">Загрузка...</span>
+      <span style="font-size:13px;color:rgba(255,255,255,.6)">Загрузка канала...</span>
     </div>
   </div>
   <div class="player-bar">
-    <div class="player-ch" id="pname">—</div>
-    <div class="player-right">
-      <span class="badge-live">● LIVE</span>
-      <button class="btn-close" onclick="closePlayer()">✕</button>
+    <div class="player-name" id="pname">—</div>
+    <div class="player-actions">
+      <span class="badge-live">LIVE</span>
+      <button class="btn-fs" onclick="openFs()">⛶ На весь экран</button>
+      <button class="btn-close-player" onclick="closePlayer()">✕</button>
     </div>
   </div>
 </div>
 
-<div class="err-box" id="err"></div>
+<div class="err" id="err"></div>
 
+<!-- ══ CHANNELS ══ -->
 <div class="section">
-  <div class="section-label">Все каналы</div>
+  <div class="section-label">Все каналы — нажмите для просмотра</div>
   <div class="grid" id="grid"></div>
 </div>
 
-<div class="footer">@tajgrouptv_tj_bot • tajgroup.online</div>
+<!-- ══ BOTTOM BAR ══ -->
+<div class="bottom-bar">
+  <span class="bot-link">@tajgrouptv_tj_bot</span>
+  <button class="btn-m3u" onclick="downloadM3U()">📥 M3U плейлист</button>
+</div>
 
 <script>
 const tg = window.Telegram.WebApp;
@@ -213,29 +277,30 @@ tg.ready();
 const API = "https://kiro-taj.ru/tv";
 
 const CHS = [
-  {id:112, name:"TVT 1",            icon:"📡", desc:"Главный гос. канал"},
-  {id:106, name:"Jahonnamo",        icon:"🌍", desc:"Новости. 3 языка"},
-  {id:108, name:"Bakhoristan",      icon:"🌸", desc:"Детский канал"},
-  {id:110, name:"Safina",           icon:"⛵", desc:"Развлечения"},
-  {id:397, name:"Синамо",           icon:"🎬", desc:"Таджикское кино"},
-  {id:495, name:"ТВ Музыка",        icon:"🎵", desc:"Музыка 24/7"},
-  {id:544, name:"Таджик фильмы",    icon:"🎥", desc:"Фильмы"},
-  {id:583, name:"Футбол HD",        icon:"⚽", desc:"Спорт HD"},
-  {id:596, name:"Varzish",          icon:"🏆", desc:"Все виды спорта"},
-  {id:628, name:"Душанбе HD",       icon:"🏙", desc:"Городской канал"},
-  {id:629, name:"Шаҳнавоз",        icon:"🎭", desc:"Культура"},
-  {id:630, name:"ТВ-Хатлон",       icon:"🌿", desc:"Хатлон"},
-  {id:631, name:"ТВ-Бадахшон",     icon:"🏔", desc:"Бадахшан"},
-  {id:632, name:"ТВ-Кулоб",        icon:"🦁", desc:"Кулоб"},
-  {id:633, name:"Суғд",            icon:"🌾", desc:"Суғд"},
-  {id:673, name:"ТВ Сайёҳӣ",      icon:"✈️", desc:"Туризм"},
-  {id:694, name:"Илм ва табиат",   icon:"🔬", desc:"Наука"},
+  {id:112,name:"TVT 1",          icon:"📡",desc:"Главный гос. канал"},
+  {id:106,name:"Jahonnamo",      icon:"🌍",desc:"Новости · 3 языка"},
+  {id:108,name:"Bakhoristan",    icon:"🌸",desc:"Детский канал"},
+  {id:110,name:"Safina",         icon:"⛵",desc:"Развлечения"},
+  {id:397,name:"Синамо",         icon:"🎬",desc:"Таджикское кино"},
+  {id:495,name:"ТВ Музыка",      icon:"🎵",desc:"Музыка 24/7"},
+  {id:544,name:"Таджик фильмы",  icon:"🎥",desc:"Фильмы"},
+  {id:583,name:"Футбол HD",      icon:"⚽",desc:"Спорт · HD"},
+  {id:596,name:"Varzish",        icon:"🏆",desc:"Все виды спорта"},
+  {id:628,name:"Душанбе HD",     icon:"🏙",desc:"Городской канал"},
+  {id:629,name:"Шаҳнавоз",      icon:"🎭",desc:"Культура"},
+  {id:630,name:"ТВ-Хатлон",     icon:"🌿",desc:"Хатлонская обл."},
+  {id:631,name:"ТВ-Бадахшон",   icon:"🏔",desc:"Бадахшан"},
+  {id:632,name:"ТВ-Кулоб",      icon:"🦁",desc:"Кулоб"},
+  {id:633,name:"Суғд",          icon:"🌾",desc:"Суғд"},
+  {id:673,name:"ТВ Сайёҳӣ",    icon:"✈️",desc:"Туризм"},
+  {id:694,name:"Илм ва табиат", icon:"🔬",desc:"Наука · Природа"},
 ];
 
-let hls=null, curId=null;
+let hls=null, fsHls=null, curId=null, curStream=null, curName=null;
 
+// Рендер карточек
 function render(){
-  document.getElementById('grid').innerHTML = CHS.map(c=>`
+  document.getElementById('grid').innerHTML=CHS.map(c=>`
     <div class="card" id="c${c.id}" onclick="play(${c.id},'${c.name}')">
       <div class="card-icon">${c.icon}</div>
       <div class="card-name">${c.name}</div>
@@ -244,52 +309,141 @@ function render(){
     </div>`).join('');
 }
 
+// Воспроизведение
 async function play(id, name){
-  if(curId){ document.getElementById('c'+curId)?.classList.remove('active'); }
-  curId=id;
+  if(curId) document.getElementById('c'+curId)?.classList.remove('active');
+  curId=id; curName=name;
   document.getElementById('c'+id)?.classList.add('active');
-  document.getElementById('pname').textContent = name;
-  document.getElementById('player-wrap').classList.add('show');
+  document.getElementById('pname').textContent=name;
+  document.getElementById('player-section').classList.add('show');
   document.getElementById('loader').classList.add('show');
   document.getElementById('err').classList.remove('show');
-  document.getElementById('player-wrap').scrollIntoView({behavior:'smooth'});
-  try {
-    const r = await fetch(`${API}/stream/${id}`);
-    const d = await r.json();
+  document.getElementById('player-section').scrollIntoView({behavior:'smooth'});
+  try{
+    const r=await fetch(`${API}/stream/${id}`);
+    const d=await r.json();
     if(!d.ok) throw new Error(d.error);
-    startHls(d.stream);
-  } catch(e){
+    curStream=d.stream;
+    startHls(d.stream, document.getElementById('video'), (h)=>{hls=h;});
+  }catch(e){
     document.getElementById('loader').classList.remove('show');
     showErr('❌ Не удалось загрузить "'+name+'". Попробуйте другой канал.');
   }
 }
 
-function startHls(url){
-  const v = document.getElementById('video');
+function startHls(url, videoEl, onHls){
   document.getElementById('loader').classList.remove('show');
-  if(hls){ hls.destroy(); hls=null; }
+  const oldHls=onHls(null);
+  if(oldHls){oldHls.destroy();}
   if(Hls.isSupported()){
-    hls = new Hls({enableWorker:true, lowLatencyMode:true});
-    hls.loadSource(url);
-    hls.attachMedia(v);
-    hls.on(Hls.Events.MANIFEST_PARSED, ()=>v.play());
-    hls.on(Hls.Events.ERROR, (e,d)=>{ if(d.fatal) showErr('❌ Ошибка потока. Попробуйте обновить.'); });
-  } else if(v.canPlayType('application/vnd.apple.mpegurl')){
-    v.src=url; v.play();
-  } else { showErr('❌ Ваш браузер не поддерживает HLS.'); }
+    const h=new Hls({enableWorker:true,lowLatencyMode:true,maxBufferLength:10});
+    h.loadSource(url);
+    h.attachMedia(videoEl);
+    h.on(Hls.Events.MANIFEST_PARSED,()=>videoEl.play().catch(()=>{}));
+    h.on(Hls.Events.ERROR,(e,d)=>{if(d.fatal)showErr('❌ Ошибка. Нажмите на другой канал.');});
+    onHls(h);
+  }else if(videoEl.canPlayType('application/vnd.apple.mpegurl')){
+    videoEl.src=url;videoEl.play().catch(()=>{});
+  }else{
+    showErr('❌ Ваш браузер не поддерживает HLS.');
+  }
 }
 
+// Закрыть плеер
 function closePlayer(){
   if(hls){hls.destroy();hls=null;}
   const v=document.getElementById('video');
-  v.pause(); v.src='';
-  document.getElementById('player-wrap').classList.remove('show');
-  if(curId){ document.getElementById('c'+curId)?.classList.remove('active'); curId=null; }
+  v.pause();v.src='';
+  document.getElementById('player-section').classList.remove('show');
+  if(curId){document.getElementById('c'+curId)?.classList.remove('active');curId=null;}
+}
+
+// Полный экран — используем нативный video fullscreen
+function openFs(){
+  if(!curStream) return;
+  const v = document.getElementById('video');
+  // Пробуем разные варианты fullscreen API
+  const req = v.requestFullscreen || v.webkitRequestFullscreen || v.mozRequestFullScreen || v.msRequestFullscreen;
+  if(req){
+    req.call(v).catch(()=>{
+      // Если не получилось — показываем наш overlay
+      openFsOverlay();
+    });
+  } else {
+    openFsOverlay();
+  }
+}
+
+function openFsOverlay(){
+  const fsV = document.getElementById('fs-video');
+  document.getElementById('fs-ch-name').textContent = curName;
+  document.getElementById('fs-overlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('video').pause();
+  if(fsHls){fsHls.destroy();fsHls=null;}
+  if(Hls.isSupported()){
+    fsHls = new Hls({enableWorker:true, lowLatencyMode:true, maxBufferLength:10});
+    fsHls.loadSource(curStream);
+    fsHls.attachMedia(fsV);
+    fsHls.on(Hls.Events.MANIFEST_PARSED, ()=>fsV.play().catch(()=>{}));
+  } else if(fsV.canPlayType('application/vnd.apple.mpegurl')){
+    fsV.src = curStream; fsV.play().catch(()=>{});
+  }
+  setTimeout(()=>document.getElementById('fs-info').classList.add('hidden'), 3000);
+  fsV.onclick = ()=>document.getElementById('fs-info').classList.toggle('hidden');
+}
+
+function closeFs(){
+  if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+  if(fsHls){fsHls.destroy();fsHls=null;}
+  const fsV=document.getElementById('fs-video');
+  fsV.pause();fsV.src='';
+  document.getElementById('fs-overlay').classList.remove('show');
+  document.getElementById('fs-info').classList.remove('hidden');
+  document.body.style.overflow='';
+  // Возобновляем основной плеер
+  if(hls && curStream){
+    document.getElementById('video').play().catch(()=>{});
+  }
+}
+
+// ESC закрывает fullscreen
+document.addEventListener('keydown',e=>{if(e.key==='Escape') closeFs();});
+document.addEventListener('fullscreenchange',()=>{
+  if(!document.fullscreenElement) closeFs();
+});
+
+// M3U скачать
+async function downloadM3U(){
+  const btn=document.querySelector('.btn-m3u');
+  btn.textContent='⏳ Генерирую...';
+  btn.disabled=true;
+  try{
+    const lines=['#EXTM3U'];
+    for(const ch of CHS){
+      try{
+        const r=await fetch(`${API}/stream/${ch.id}`);
+        const d=await r.json();
+        if(d.ok){
+          lines.push(`#EXTINF:-1 tvg-id="${ch.id}" group-title="🇹🇯 Таджикистан",${ch.name}`);
+          lines.push(d.stream);
+        }
+      }catch(e){}
+    }
+    const blob=new Blob([lines.join('\n')],{type:'application/x-mpegurl'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='tajikistan.m3u';
+    a.click();
+  }finally{
+    btn.textContent='📥 M3U плейлист';
+    btn.disabled=false;
+  }
 }
 
 function showErr(msg){
   const e=document.getElementById('err');
-  e.textContent=msg; e.classList.add('show');
+  e.textContent=msg;e.classList.add('show');
 }
 
 render();
